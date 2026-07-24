@@ -2,12 +2,12 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Битва Пустыни - Рекорды</title>
     <style>
         body {
             margin: 0;
-            background: #5e3c25;
+            background: #5e3c25; /* Desert ground color */
             color: white;
             font-family: 'Courier New', Courier, monospace;
             display: flex;
@@ -16,205 +16,380 @@
             justify-content: center;
             height: 100vh;
             overflow: hidden;
+            user-select: none; /* Prevent text selection */
         }
-        canvas {
-            background: #8c6c52;
-            border: 4px solid #4a3120;
-            box-shadow: 0 0 20px rgba(0,0,0,0.7);
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            background: #d9b382; /* Lighter desert sand */
+            border: 10px solid #4a301c;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+            overflow: hidden;
+            cursor: crosshair;
         }
-        .controls {
+
+        /* Player (Brawler) */
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #f44336; /* Default brawler red */
+            border-radius: 50%;
+            border: 3px solid #b71c1c;
+            box-shadow: 0 0 10px rgba(0,0,0,0.7);
+            transition: transform 0.1s;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        #player::after { /* "Gun" */
+            content: '';
+            position: absolute;
+            width: 15px;
+            height: 5px;
+            background: #616161;
+            right: -5px;
+            top: 17px;
+            border-radius: 2px;
+        }
+        #player.hit {
+            transform: scale(1.2);
+            background-color: #ffcdd2;
+        }
+
+        /* Enemy (Robot) */
+        .enemy {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: #2196f3; /* Default enemy blue */
+            border-radius: 50%;
+            border: 3px solid #0d47a1;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+            z-index: 5;
+            animation: pulse 1s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
+        }
+
+        /* Bullet */
+        .bullet {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffeb3b; /* Yellow bullet */
+            border-radius: 50%;
+            box-shadow: 0 0 5px #ff9800;
+            z-index: 8;
+        }
+
+        /* UI Elements */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to game-container */
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #score-board {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin: 10px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
             display: flex;
             justify-content: space-between;
-            width: 350px;
-            margin-top: 20px;
+            align-self: flex-start;
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
         }
-        .btn-group {
-            display: flex;
-            gap: 15px;
-        }
-        button {
-            width: 70px;
-            height: 70px;
-            font-size: 30px;
-            background: #ffd700;
-            border: 3px solid #b89400;
-            border-radius: 50%;
-            font-weight: bold;
-            color: #5e3c25;
-            box-shadow: 0 6px 0 #b89400;
-            cursor: pointer;
-            user-select: none;
-            -webkit-user-select: none;
-            transition: all 0.1s;
-        }
-        button:active {
-            background: #e6c200;
-            box-shadow: 0 2px 0 #b89400;
-            transform: translateY(4px);
-        }
-        .fire-btn {
-            background: #ff5252;
-            border: 3px solid #b83b3b;
-            box-shadow: 0 6px 0 #b83b3b;
-            color: white;
-        }
-        .fire-btn:active {
-            background: #e04848;
-            box-shadow: 0 2px 0 #b83b3b;
-        }
-        header {
+        .score-item { margin: 0 10px; }
+        .highlight { color: #ffeb3b; }
+
+        /* Start Screen */
+        #start-screen {
             position: absolute;
-            top: 15px;
-            text-align: center;
+            top: 0;
+            left: 0;
             width: 100%;
-            pointer-events: none;
-            text-shadow: 2px 2px 0 #000;
-        }
-        h1 { margin: 0; font-size: 22px;}
-        .score-board {
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
             display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
-            gap: 20px;
-            font-size: 16px;
-            margin-top: 5px;
-            font-weight: bold;
+            z-index: 30;
         }
+        #start-screen h1 { font-size: 48px; margin-bottom: 10px; color: #ff5722; text-shadow: 3px 3px 0 #bf360c; }
+        #start-screen p { font-size: 18px; margin-bottom: 30px; text-align: center; max-width: 500px;}
+        #start-button {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #1b5e20;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        #start-button:hover { background: #66bb6a; }
+        #start-button:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #1b5e20;
+        }
+
+        /* Controls Hint (Mobile) */
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            pointer-events: none;
+            display: none; /* Only show on mobile */
+        }
+        @media (max-width: 800px) {
+            #controls-hint { display: block; }
+            #game-container { border-width: 5px; }
+            #score-board { font-size: 18px; }
+        }
+
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>БИТВА ПУСТЫНИ</h1>
-        <div class="score-board">
-            <span id="scoreText">Очки: 0</span>
-            <span id="highScoreText">Рекорд: 0</span>
+    <div id="game-container">
+        <div id="player"></div>
+        <div id="ui-layer">
+            <div id="score-board">
+                <div class="score-item">СЧЕТ: <span id="score" class="highlight">0</span></div>
+                <div class="score-item">РЕКОРД: <span id="record" class="highlight">0</span></div>
+            </div>
         </div>
-    </header>
-
-    <canvas id="gameCanvas" width="360" height="340"></canvas>
-
-    <div class="controls">
-        <div class="btn-group">
-            <button id="leftBtn">◀</button>
-            <button id="rightBtn">▶</button>
+        <div id="start-screen">
+            <h1>ПУСТЫННАЯ БИТВА</h1>
+            <p>Добро пожаловать в мини-игру по мотивам Brawl Stars! Перемещай мышь или палец по экрану, чтобы управлять бойцом. Стреляй кликом или тапом. Уничтожай роботов и набирай очки!</p>
+            <button id="start-button">ИГРАТЬ</button>
         </div>
-        <button id="fireBtn" class="fire-btn">🔥</button>
     </div>
+    <div id="controls-hint">Управление: Тап для движения и стрельбы</div>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        // Game Variables
+        const gameContainer = document.getElementById('game-container');
+        const player = document.getElementById('player');
+        const scoreEl = document.getElementById('score');
+        const recordEl = document.getElementById('record');
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
 
-        // Игрок
-        let player = {
-            x: 180,
-            y: 290,
-            size: 25,
-            speed: 4,
-            icon: '🤖'
-        };
-
-        // Игровая статистика и рекорды
         let score = 0;
-        let highscore = localStorage.getItem('brawl_highscore') || 0;
+        let record = localStorage.getItem('brawlRecord') || 0;
+        let isPlaying = false;
+        let gameInterval;
+        let enemyInterval;
+        let playerX = 380;
+        let playerY = 280;
+        let mouseX = playerX;
+        let mouseY = playerY;
 
-        // Обновляем текст рекорда на экране сразу
-        document.getElementById("highScoreText").innerText = `Рекорд: ${highscore}`;
+        // --- Setup ---
+        recordEl.innerText = record;
 
-        // Пули
-        let bullets = [];
+        // --- Player Controls ---
+        function updatePlayerPos() {
+            const containerRect = gameContainer.getBoundingClientRect();
+            const playerSize = player.offsetWidth;
 
-        // Препятствия
-        let walls = [
-            { x: 60, y: 100, w: 80, h: 25, icon: '🧱' },
-            { x: 200, y: 180, w: 90, h: 25, icon: '🧱' }
-        ];
+            // Add inertia for smoother movement
+            playerX += (mouseX - playerX) * 0.1;
+            playerY += (mouseY - playerY) * 0.1;
 
-        let movingLeft = false;
-        let movingRight = false;
+            // Clamp position within container
+            playerX = Math.max(playerSize / 2, Math.min(containerRect.width - playerSize / 2, playerX));
+            playerY = Math.max(playerSize / 2, Math.min(containerRect.height - playerSize / 2, playerY));
 
-        function addListeners(btnId, action) {
-            const btn = document.getElementById(btnId);
-            btn.addEventListener("touchstart", (e) => { e.preventDefault(); action(true); });
-            btn.addEventListener("touchend", (e) => { e.preventDefault(); action(false); });
-            btn.addEventListener("mousedown", () => action(true));
-            btn.addEventListener("mouseup", () => action(false));
+            player.style.left = (playerX - playerSize / 2) + 'px';
+            player.style.top = (playerY - playerSize / 2) + 'px';
         }
 
-        addListeners("leftBtn", (isMoving) => movingLeft = isMoving);
-        addListeners("rightBtn", (isMoving) => movingRight = isMoving);
-
-        document.getElementById("fireBtn").addEventListener("click", () => {
-            bullets.push({
-                x: player.x,
-                y: player.y - player.size / 2,
-                speed: 6,
-                icon: '❇️'
-            });
-
-            // Начисляем очки за каждый выстрел
-            score += 10;
-            updateScoreUI();
+        // Mouse/Touch events
+        gameContainer.addEventListener('mousemove', (e) => {
+            if (!isPlaying) return;
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
         });
+        // Touch support
+        gameContainer.addEventListener('touchmove', (e) => {
+            if (!isPlaying) return;
+            e.preventDefault(); // Prevent scrolling
+            const rect = gameContainer.getBoundingClientRect();
+            mouseX = e.touches[0].clientX - rect.left;
+            mouseY = e.touches[0].clientY - rect.top;
+        }, { passive: false });
 
-        function updateScoreUI() {
-            document.getElementById("scoreText").innerText = `Очки: ${score}`;
-            
-            // Проверка и сохранение рекорда
-            if (score > highscore) {
-                highscore = score;
-                localStorage.setItem('brawl_highscore', highscore);
-                document.getElementById("highScoreText").innerText = `Рекорд: ${highscore}`;
+        // --- Shooting ---
+        gameContainer.addEventListener('click', shoot);
+        gameContainer.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shoot(e);
+        }, { passive: false });
+
+        function shoot(e) {
+            if (!isPlaying) return;
+            const rect = gameContainer.getBoundingClientRect();
+            let targetX, targetY;
+            if(e.type === 'touchstart') {
+                 targetX = e.touches[0].clientX - rect.left;
+                 targetY = e.touches[0].clientY - rect.top;
+            } else {
+                 targetX = e.clientX - rect.left;
+                 targetY = e.clientY - rect.top;
             }
-        }
 
-        function update() {
-            if (movingLeft) player.x -= player.speed;
-            if (movingRight) player.x += player.speed;
+            const bullet = document.createElement('div');
+            bullet.classList.add('bullet');
+            bullet.style.left = playerX + 'px';
+            bullet.style.top = playerY + 'px';
+            gameContainer.appendChild(bullet);
 
-            if (player.x < player.size) player.x = player.size;
-            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+            const angle = Math.atan2(targetY - playerY, targetX - playerX);
+            const speed = 10;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
 
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                bullets[i].y -= bullets[i].speed;
-                if (bullets[i].y < 0) {
-                    bullets.splice(i, 1);
-                }
-            }
-        }
+            function moveBullet() {
+                const bX = parseFloat(bullet.style.left);
+                const bY = parseFloat(bullet.style.top);
+                bullet.style.left = (bX + vx) + 'px';
+                bullet.style.top = (bY + vy) + 'px';
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "white";
-            ctx.font = "25px 'Courier New'";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            walls.forEach(w => {
-                for (let ix = w.x; ix < w.x + w.w; ix += 20) {
-                    for (let iy = w.y; iy < w.y + w.h; iy += 20) {
-                        ctx.fillText(w.icon, ix + 10, iy + 12);
+                // Check Collision
+                const enemies = document.querySelectorAll('.enemy');
+                enemies.forEach(enemy => {
+                    const eRect = enemy.getBoundingClientRect();
+                    const bRect = bullet.getBoundingClientRect();
+                    if (bRect.left < eRect.right &&
+                        bRect.right > eRect.left &&
+                        bRect.top < eRect.bottom &&
+                        bRect.bottom > eRect.top) {
+                        gameContainer.removeChild(enemy);
+                        gameContainer.removeChild(bullet);
+                        addScore();
                     }
+                });
+
+                // Remove if out of bounds
+                if (bX < 0 || bX > rect.width || bY < 0 || bY > rect.height) {
+                    if(gameContainer.contains(bullet)) gameContainer.removeChild(bullet);
+                } else {
+                   requestAnimationFrame(moveBullet);
                 }
-            });
-
-            ctx.font = "40px 'Segoe UI Emoji'";
-            ctx.fillText(player.icon, player.x, player.y);
-
-            ctx.font = "20px 'Segoe UI Emoji'";
-            bullets.forEach(b => {
-                ctx.fillText(b.icon, b.x, b.y);
-            });
+            }
+            requestAnimationFrame(moveBullet);
         }
 
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
+
+        // --- Game Logic ---
+        function addScore() {
+            score += 100;
+            scoreEl.innerText = score;
+            if (score > record) {
+                record = score;
+                recordEl.innerText = record;
+                localStorage.setItem('brawlRecord', record);
+            }
         }
 
-        loop();
-    </script>
+        function spawnEnemy() {
+            if (!isPlaying) return;
+            const enemy = document.createElement('div');
+            enemy.classList.add('enemy');
+            const containerRect = gameContainer.getBoundingClientRect();
+
+            const side = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
+            let ex, ey;
+            if (side === 0) { ex = Math.random() * containerRect.width; ey = -30; }
+            else if (side === 1) { ex = containerRect.width + 30; ey = Math.random() * containerRect.height; }
+            else if (side === 2) { ex = Math.random() * containerRect.width; ey = containerRect.height + 30; }
+            else { ex = -30; ey = Math.random() * containerRect.height; }
+
+            enemy.style.left = ex + 'px';
+            enemy.style.top = ey + 'px';
+            gameContainer.appendChild(enemy);
+
+            // Move towards player
+            function moveEnemy() {
+                 if(!isPlaying || !gameContainer.contains(enemy)) return;
+                 const currentEx = parseFloat(enemy.style.left);
+                 const currentEy = parseFloat(enemy.style.top);
+                 const dx = playerX - currentEx;
+                 const dy = playerY - currentEy;
+                 const dist = Math.sqrt(dx*dx + dy*dy);
+                 const speed = 0.5; // enemy speed
+
+                 if (dist > 10) {
+                    enemy.style.left = (currentEx + (dx/dist) * speed) + 'px';
+                    enemy.style.top = (currentEy + (dy/dist) * speed) + 'px';
+                    requestAnimationFrame(moveEnemy);
+                 } else {
+                    gameOver();
+                 }
+            }
+            requestAnimationFrame(moveEnemy);
+        }
+
+        function startGame() {
+            score = 0;
+            scoreEl.innerText = score;
+            startScreen.style.display = 'none';
+            isPlaying = true;
+                    // Запуск спавна врагов каждые 2 секунды
+        setInterval(spawnEnemy, 2000);
+    }
+
+    function gameOver() {
+        isPlaying = false;
+        startScreen.style.display = 'flex';
+        // Удаляем оставшихся врагов
+        document.querySelectorAll('.enemy').forEach(e => e.remove());
+    }
+
+    startButton.addEventListener('click', startGame);
+    startButton.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        startGame();
+    }, { passive: false });
+
+    // Главный игровой цикл для плавного движения
+    function gameLoop() {
+        updatePlayerPos();
+        requestAnimationFrame(gameLoop);
+    }
+    requestAnimationFrame(gameLoop);
+</script>
 </body>
 </html>
-            
+
+
