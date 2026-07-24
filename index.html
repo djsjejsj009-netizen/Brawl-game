@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Брикс Бросок - Прототип</title>
+    <title>Битва Пустыни - Прототип</title>
     <style>
         body {
             margin: 0;
-            background: #1a1a1a;
+            background: #5e3c25; /* Цвет песка на фоне */
             color: white;
-            font-family: Arial, sans-serif;
+            font-family: 'Courier New', Courier, monospace; /* Стиль шрифта под ретро */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -18,55 +18,76 @@
             overflow: hidden;
         }
         canvas {
-            background: #2b2b2b;
-            border: 2px solid #444;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            background: #8c6c52; /* Цвет песка на арене */
+            border: 4px solid #4a3120; /* Каменистая граница */
+            box-shadow: 0 0 20px rgba(0,0,0,0.7);
         }
         .controls {
             display: flex;
             justify-content: space-between;
-            width: 320px;
-            margin-top: 15px;
+            width: 350px; /* Чуть шире кнопки */
+            margin-top: 20px;
         }
         .btn-group {
             display: flex;
-            gap: 10px;
+            gap: 15px;
         }
         button {
-            width: 60px;
-            height: 60px;
-            font-size: 20px;
-            background: #ffcc00;
-            border: none;
+            width: 70px;
+            height: 70px;
+            font-size: 30px;
+            background: #ffd700; /* Золотые кнопки */
+            border: 3px solid #b89400;
             border-radius: 50%;
             font-weight: bold;
-            color: #111;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: #5e3c25;
+            box-shadow: 0 6px 0 #b89400; /* Эффект нажатия */
             cursor: pointer;
             user-select: none;
             -webkit-user-select: none;
+            transition: all 0.1s;
         }
         button:active {
-            background: #e6b800;
-            transform: scale(0.95);
+            background: #e6c200;
+            box-shadow: 0 2px 0 #b89400;
+            transform: translateY(4px);
         }
         .fire-btn {
-            background: #ff4747;
+            background: #ff5252; /* Красная кнопка огня */
+            border: 3px solid #b83b3b;
+            box-shadow: 0 6px 0 #b83b3b;
             color: white;
         }
         .fire-btn:active {
-            background: #e03b3b;
+            background: #e04848;
+            box-shadow: 0 2px 0 #b83b3b;
         }
+        /* Добавим небольшое описание сверху */
+        header {
+            position: absolute;
+            top: 20px;
+            text-align: center;
+            width: 100%;
+            pointer-events: none;
+            text-shadow: 2px 2px 0 #000;
+        }
+        h1 { margin: 0; font-size: 24px;}
+        p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.8;}
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas" width="320" height="320"></canvas>
+    <header>
+        <h1>БИТВА ПУСТЫНИ</h1>
+        <p>Твой первый прототип</p>
+    </header>
+
+    <canvas id="gameCanvas" width="360" height="360"></canvas>
 
     <div class="controls">
         <div class="btn-group">
-            <button id="leftBtn">←</button>
-            <button id="rightBtn">→</button>
+            <button id="leftBtn">◀</button>
+            <button id="rightBtn">▶</button>
         </div>
         <button id="fireBtn" class="fire-btn">🔥</button>
     </div>
@@ -75,43 +96,48 @@
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
-        // Игрок
+        // Игрок - теперь визуально "пиксель-арт" (текст)
         let player = {
-            x: 160,
-            y: 260,
-            size: 20,
-            speed: 3,
-            dx: 0
+            x: 180, // Центр поля
+            y: 310,
+            size: 25, // Чуть больше
+            speed: 4, // Чуть быстрее
+            dx: 0,
+            icon: '🤖' // Иконка робота (можно заменить на '🔫')
         };
 
         // Пули
         let bullets = [];
 
-        // Препятствия (стены)
+        // Препятствия (стены) - визуально "каменные блоки" (текст)
         let walls = [
-            { x: 60, y: 100, w: 80, h: 20 },
-            { x: 180, y: 180, w: 80, h: 20 }
+            { x: 60, y: 120, w: 80, h: 25, icon: '🧱' },
+            { x: 200, y: 200, w: 90, h: 25, icon: '🧱' }
         ];
 
         // Управление с кнопок
         let movingLeft = false;
         let movingRight = false;
 
-        document.getElementById("leftBtn").addEventListener("touchstart", () => movingLeft = true);
-        document.getElementById("leftBtn").addEventListener("touchend", () => movingLeft = false);
-        document.getElementById("leftBtn").addEventListener("mousedown", () => movingLeft = true);
-        document.getElementById("leftBtn").addEventListener("mouseup", () => movingLeft = false);
+        function addListeners(btnId, action) {
+            const btn = document.getElementById(btnId);
+            // Для телефона (touch)
+            btn.addEventListener("touchstart", (e) => { e.preventDefault(); action(true); });
+            btn.addEventListener("touchend", (e) => { e.preventDefault(); action(false); });
+            // Для компьютера (mouse)
+            btn.addEventListener("mousedown", () => action(true));
+            btn.addEventListener("mouseup", () => action(false));
+        }
 
-        document.getElementById("rightBtn").addEventListener("touchstart", () => movingRight = true);
-        document.getElementById("rightBtn").addEventListener("touchend", () => movingRight = false);
-        document.getElementById("rightBtn").addEventListener("mousedown", () => movingRight = true);
-        document.getElementById("rightBtn").addEventListener("mouseup", () => movingRight = false);
+        addListeners("leftBtn", (isMoving) => movingLeft = isMoving);
+        addListeners("rightBtn", (isMoving) => movingRight = isMoving);
 
         document.getElementById("fireBtn").addEventListener("click", () => {
             bullets.push({
                 x: player.x,
-                y: player.y - player.size,
-                speed: 5
+                y: player.y - player.size / 2,
+                speed: 6,
+                icon: '❇️' // Иконка пули
             });
         });
 
@@ -137,24 +163,28 @@
             // Очистка экрана
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Рисуем стены
-            ctx.fillStyle = "#555";
+            // Рисуем стены (текстом)
+            ctx.fillStyle = "white";
+            ctx.font = "25px 'Courier New'";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
             walls.forEach(w => {
-                ctx.fillRect(w.x, w.y, w.w, w.h);
+                // Заполняем прямоугольник иконками
+                for (let ix = w.x; ix < w.x + w.w; ix += 20) {
+                    for (let iy = w.y; iy < w.y + w.h; iy += 20) {
+                        ctx.fillText(w.icon, ix + 10, iy + 12);
+                    }
+                }
             });
 
-            // Рисуем игрока
-            ctx.fillStyle = "#00ffcc";
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
-            ctx.fill();
+            // Рисуем игрока (иконкой)
+            ctx.font = "40px 'Segoe UI Emoji'"; // Шрифт для эмодзи
+            ctx.fillText(player.icon, player.x, player.y);
 
-            // Рисуем пули
-            ctx.fillStyle = "#ffcc00";
+            // Рисуем пули (иконкой)
+            ctx.font = "20px 'Segoe UI Emoji'";
             bullets.forEach(b => {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillText(b.icon, b.x, b.y);
             });
         }
 
@@ -168,4 +198,4 @@
     </script>
 </body>
 </html>
-
+            
