@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Брикс Бросок - Прототип</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a1a;
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        canvas {
+            background: #2b2b2b;
+            border: 2px solid #444;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            width: 320px;
+            margin-top: 15px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+            background: #ffcc00;
+            border: none;
+            border-radius: 50%;
+            font-weight: bold;
+            color: #111;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        button:active {
+            background: #e6b800;
+            transform: scale(0.95);
+        }
+        .fire-btn {
+            background: #ff4747;
+            color: white;
+        }
+        .fire-btn:active {
+            background: #e03b3b;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gameCanvas" width="320" height="320"></canvas>
+
+    <div class="controls">
+        <div class="btn-group">
+            <button id="leftBtn">←</button>
+            <button id="rightBtn">→</button>
+        </div>
+        <button id="fireBtn" class="fire-btn">🔥</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Игрок
+        let player = {
+            x: 160,
+            y: 260,
+            size: 20,
+            speed: 3,
+            dx: 0
+        };
+
+        // Пули
+        let bullets = [];
+
+        // Препятствия (стены)
+        let walls = [
+            { x: 60, y: 100, w: 80, h: 20 },
+            { x: 180, y: 180, w: 80, h: 20 }
+        ];
+
+        // Управление с кнопок
+        let movingLeft = false;
+        let movingRight = false;
+
+        document.getElementById("leftBtn").addEventListener("touchstart", () => movingLeft = true);
+        document.getElementById("leftBtn").addEventListener("touchend", () => movingLeft = false);
+        document.getElementById("leftBtn").addEventListener("mousedown", () => movingLeft = true);
+        document.getElementById("leftBtn").addEventListener("mouseup", () => movingLeft = false);
+
+        document.getElementById("rightBtn").addEventListener("touchstart", () => movingRight = true);
+        document.getElementById("rightBtn").addEventListener("touchend", () => movingRight = false);
+        document.getElementById("rightBtn").addEventListener("mousedown", () => movingRight = true);
+        document.getElementById("rightBtn").addEventListener("mouseup", () => movingRight = false);
+
+        document.getElementById("fireBtn").addEventListener("click", () => {
+            bullets.push({
+                x: player.x,
+                y: player.y - player.size,
+                speed: 5
+            });
+        });
+
+        function update() {
+            // Движение игрока
+            if (movingLeft) player.x -= player.speed;
+            if (movingRight) player.x += player.speed;
+
+            // Границы экрана
+            if (player.x < player.size) player.x = player.size;
+            if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+
+            // Обновление пуль
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Очистка экрана
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Рисуем стены
+            ctx.fillStyle = "#555";
+            walls.forEach(w => {
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+            });
+
+            // Рисуем игрока
+            ctx.fillStyle = "#00ffcc";
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Рисуем пули
+            ctx.fillStyle = "#ffcc00";
+            bullets.forEach(b => {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
+
