@@ -3,170 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Brawl Style Landscape</title>
+    <title>3D Brawl Mini</title>
+    <!-- Подключаем библиотеку Three.js для 3D графики -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
             margin: 0;
-            background: #111;
             overflow: hidden;
+            background: #111;
             touch-action: none;
             font-family: Arial, sans-serif;
         }
-        canvas {
-            display: block;
-            background: #388e3c;
+        /* Интерфейс поверх 3D сцены */
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 25px;
+            box-sizing: border-box;
+        }
+        /* Джойстик слева */
+        .joystick-zone {
+            width: 130px;
+            height: 130px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: auto;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .joystick-knob {
+            width: 55px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            position: absolute;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        /* Кнопка атаки справа */
+        .btn-attack {
+            width: 85px;
+            height: 85px;
+            background: #ff5722;
+            border: 4px solid #ffffff;
+            border-radius: 50%;
+            pointer-events: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            cursor: pointer;
+            user-select: none;
+        }
+        .btn-attack:active {
+            transform: scale(0.92);
+            background: #e64a19;
+        }
+        /* Верхняя панель */
+        .top-bar {
+            position: absolute;
+            top: 15px;
+            left: 20px;
+            color: #ffeb3b;
+            font-weight: bold;
+            font-size: 16px;
+            text-shadow: 2px 2px 4px #000;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas"></canvas>
+    <div class="top-bar">🏆 3D BRAWL — АРЕНА</div>
+
+    <div id="ui">
+        <div id="joystickZone" class="joystick-zone">
+            <div id="joystickKnob" class="joystick-knob"></div>
+        </div>
+        <div id="attackBtn" class="btn-attack">АТАКА</div>
+    </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // 1. Инициализация 3D сцены
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x2e7d32);
 
-        // Автоматически растягиваем на весь экран в горизонтальном режиме
-        function resize() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 14, 10);
+        camera.rotation.x = -Math.PI / 3; // Наклон камеры сверху (вид как в Brawl Stars)
 
-        // Игрок (боец)
-        let player = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 22,
-            color: '#00bcd4',
-            speed: 4,
-            angle: 0
-        };
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-        let targetX = player.x;
-        let targetY = player.y;
-        let isMoving = false;
+        // 2. Освещение
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
 
-        // Элементы карты: Препятствия (стены) и Кусты
-        const walls = [
-            { x: 250, y: 120, w: 120, h: 40 },
-            { x: 600, y: 120, w: 120, h: 40 },
-            { x: 400, y: 250, w: 80, h: 80 },
-            { x: 250, y: 400, w: 120, h: 40 },
-            { x: 600, y: 400, w: 120, h: 40 }
-        ];
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(10, 20, 10);
+        scene.add(dirLight);
 
-        const bushes = [
-            { x: 100, y: 100, w: 100, h: 100 },
-            { x: 800, y: 350, w: 100, h: 100 }
-        ];
+        // 3. Создание арены (земля)
+        const groundGeo = new THREE.PlaneGeometry(28, 18);
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        scene.add(ground);
 
-        // Управление касанием экрана
-        window.addEventListener('pointerdown', (e) => { updateTarget(e); });
-        window.addEventListener('pointermove', (e) => { if (isMoving) updateTarget(e); });
-        window.addEventListener('pointerup', () => { isMoving = false; });
-
-        function updateTarget(e) {
-            targetX = e.clientX;
-            targetY = e.clientY;
-            isMoving = true;
+        // 4. Добавление 3D-стен (препятствий)
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x795548 });
+        function addWall(x, z, w, d) {
+            const wallGeo = new THREE.BoxGeometry(w, 1.5, d);
+            const wall = new THREE.Mesh(wallGeo, wallMat);
+            wall.position.set(x, 0.75, z);
+            scene.add(wall);
         }
 
-        // Логика игры
-        function update() {
-            if (isMoving) {
-                let dx = targetX - player.x;
-                let dy = targetY - player.y;
-                let distance = Math.sqrt(dx * dx + dy * dy);
+        addWall(-4, 2, 3, 1);
+        addWall(4, 2, 3, 1);
+        addWall(0, -1, 2, 2);
+        addWall(-4, -4, 3, 1);
+        addWall(4, -4, 3, 1);
 
-                if (distance > 3) {
-                    player.x += (dx / distance) * player.speed;
-                    player.y += (dy / distance) * player.speed;
-                    // Поворачиваем бойца лицом к цели
-                    player.angle = Math.atan2(dy, dx);
+        // 5. Создание 3D-модели бойца (тело, голова, оружие)
+        const playerGroup = new THREE.Group();
+
+        // Тело
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4 });
+        const body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.y = 0.5;
+        playerGroup.add(body);
+
+        // Голова
+        const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.3;
+        playerGroup.add(head);
+
+        // Оружие (пушка в руках)
+        const gunGeo = new THREE.BoxGeometry(0.7, 0.25, 0.25);
+        const gunMat = new THREE.MeshStandardMaterial({ color: 0xff5722 });
+        const gun = new THREE.Mesh(gunGeo, gunMat);
+        gun.position.set(0.5, 1.0, 0);
+        playerGroup.add(gun);
+
+        playerGroup.position.set(0, 0, 4);
+        scene.add(playerGroup);
+
+        // 6. Снаряды (стрельба)
+        const bullets = [];
+        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+
+        function shoot() {
+            const bulletGeo = new THREE.SphereGeometry(0.18, 8, 8);
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            bullet.position.copy(playerGroup.position);
+            bullet.position.y = 1.0;
+
+            // Направление полета пули в соответствии с поворотом бойца
+            const dir = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
+            bullet.userData = { velocity: dir.multiplyScalar(0.4) };
+
+            scene.add(bullet);
+            bullets.push(bullet);
+        }
+
+        // 7. Управление виртуальным джойстиком
+        let moveX = 0, moveY = 0;
+        let isDragging = false;
+        const zone = document.getElementById('joystickZone');
+        const knob = document.getElementById('joystickKnob');
+        let startX = 0, startY = 0;
+
+        zone.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            let dx = e.clientX - startX;
+            let dy = e.clientY - startY;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            let maxDist = 40;
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            moveX = dx / maxDist;
+            moveY = dy / maxDist;
+        });
+
+        window.addEventListener('pointerup', () => {
+            isDragging = false;
+            moveX = 0;
+            moveY = 0;
+            knob.style.transform = `translate(0px, 0px)`;
+        });
+
+        // Кнопка атаки
+        document.getElementById('attackBtn').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            shoot();
+        });
+
+        // Автоматический поворот под размер экрана
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // 8. Главный игровой цикл
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Перемещение бойца
+            if (moveX !== 0 || moveY !== 0) {
+                const speed = 0.08;
+                let nextX = playerGroup.position.x + moveX * speed;
+                let nextZ = playerGroup.position.z + moveY * speed;
+
+                // Границы арены
+                if (nextX > -13 && nextX < 13) playerGroup.position.x = nextX;
+                if (nextZ > -8 && nextZ < 8) playerGroup.position.z = nextZ;
+
+                // Поворот бойца лицом в сторону движения
+                playerGroup.rotation.y = Math.atan2(-moveY, moveX);
+            }
+
+            // Движение снарядов
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.position.add(b.userData.velocity);
+
+                // Удаляем пулю, если она улетела за пределы арены
+                if (Math.abs(b.position.x) > 15 || Math.abs(b.position.z) > 10) {
+                    scene.remove(b);
+                    bullets.splice(i, 1);
                 }
             }
+
+            renderer.render(scene, camera);
         }
 
-        // Отрисовка графики
-        function draw() {
-            // Трава на арене
-            ctx.fillStyle = '#4caf50';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Текстура сетки поля
-            ctx.strokeStyle = '#43a047';
-            ctx.lineWidth = 2;
-            for (let x = 0; x < canvas.width; x += 60) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-            }
-            for (let y = 0; y < canvas.height; y += 60) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
-
-            // Отрисовка кустов
-            bushes.forEach(b => {
-                ctx.fillStyle = '#2e7d32';
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.strokeStyle = '#1b5e20';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(b.x, b.y, b.w, b.h);
-            });
-
-            // Отрисовка стен
-            walls.forEach(w => {
-                ctx.fillStyle = '#8d6e63';
-                ctx.fillRect(w.x, w.y, w.w, w.h);
-                ctx.strokeStyle = '#4e342e';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(w.x, w.y, w.w, w.h);
-            });
-
-            // Отрисовка бойца с оружием
-            ctx.save();
-            ctx.translate(player.x, player.y);
-            ctx.rotate(player.angle);
-
-            // Оружие бойца
-            ctx.fillStyle = '#ff5722';
-            ctx.fillRect(5, -6, 24, 12);
-
-            // Тело бойца
-            ctx.beginPath();
-            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
-            ctx.fillStyle = player.color;
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#ffffff';
-            ctx.stroke();
-            ctx.closePath();
-
-            ctx.restore();
-
-            // Интерфейс (Счетчик / Название)
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(20, 20, 180, 45);
-            ctx.fillStyle = '#ffeb3b';
-            ctx.font = 'bold 16px Arial';
-            ctx.fillText('🏆 БОЙЦОВ: 1 / 10', 35, 48);
-            
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(canvas.width - 150, 20, 130, 45);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText('⚡ УЛЬТА: ГОТОВА', canvas.width - 138, 48);
-        }
-
-        // Игровой цикл
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        loop();
+        animate();
     </script>
 </body>
 </html>
+
 
         
