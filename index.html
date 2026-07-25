@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Brawl Mini</title>
-    <!-- Подключаем библиотеку Three.js для 3D графики -->
+    <title>3D Brawl Improved</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
@@ -13,8 +12,10 @@
             background: #111;
             touch-action: none;
             font-family: Arial, sans-serif;
+            /* Убираем выделение текста и элементов при тапах */
+            -webkit-user-select: none; 
+            user-select: none;
         }
-        /* Интерфейс поверх 3D сцены */
         #ui {
             position: absolute;
             top: 0;
@@ -27,33 +28,35 @@
             align-items: flex-end;
             padding: 25px;
             box-sizing: border-box;
+            /* Важно для iOS: скрываем полосу прокрутки */
+            overscroll-behavior: none;
         }
-        /* Джойстик слева */
         .joystick-zone {
             width: 130px;
             height: 130px;
             background: rgba(255, 255, 255, 0.15);
-            border: 2px solid rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.4);
             border-radius: 50%;
             pointer-events: auto;
             position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
+            /* Добавляем тень джойстику */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .joystick-knob {
             width: 55px;
             height: 55px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             position: absolute;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
-        /* Кнопка атаки справа */
         .btn-attack {
             width: 85px;
             height: 85px;
-            background: #ff5722;
+            background: linear-gradient(135deg, #ff9800, #ff5722);
             border: 4px solid #ffffff;
             border-radius: 50%;
             pointer-events: auto;
@@ -63,212 +66,133 @@
             color: white;
             font-weight: bold;
             font-size: 16px;
-            box-shadow: 0 6px 15px rgba(0,0,0,0.5);
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
             cursor: pointer;
-            user-select: none;
+            /* Эффект нажатия */
+            transition: transform 0.1s ease, background 0.1s ease;
         }
         .btn-attack:active {
-            transform: scale(0.92);
-            background: #e64a19;
+            transform: scale(0.95) translateY(2px);
+            background: linear-gradient(135deg, #ffb74d, #ff7043);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
         }
-        /* Верхняя панель */
         .top-bar {
             position: absolute;
             top: 15px;
             left: 20px;
             color: #ffeb3b;
             font-weight: bold;
-            font-size: 16px;
-            text-shadow: 2px 2px 4px #000;
+            font-size: 18px;
+            text-shadow: 2px 2px 6px #000;
+            background: rgba(0,0,0,0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div class="top-bar">🏆 3D BRAWL — АРЕНА</div>
+    <div class="top-bar">🏆 ЛУЧШАЯ АРЕНА (HD)</div>
 
     <div id="ui">
         <div id="joystickZone" class="joystick-zone">
             <div id="joystickKnob" class="joystick-knob"></div>
         </div>
-        <div id="attackBtn" class="btn-attack">АТАКА</div>
+        <div id="attackBtn" class="btn-attack">FIRE!</div>
     </div>
 
     <script>
-        // 1. Инициализация 3D сцены
+        // --- Инициализация с поддержкой теней ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x2e7d32);
+        // Более глубокий цвет фона (небо)
+        scene.background = new THREE.Color(0x1b5e20); 
+        scene.fog = new THREE.Fog(0x1b5e20, 15, 40); // Легкий туман вдалеке
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 14, 10);
-        camera.rotation.x = -Math.PI / 3; // Наклон камеры сверху (вид как в Brawl Stars)
+        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 16, 12);
+        camera.lookAt(0, 0, 0);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        // ВКЛЮЧАЕМ ТЕНИ В РЕНДЕРЕРЕ (это очень важно!)
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Более мягкие тени
         document.body.appendChild(renderer.domElement);
 
-        // 2. Освещение
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        // --- Освещение ---
+        // 1. Рассеянный свет (чтобы объекты не были черными)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.75); 
         scene.add(ambientLight);
 
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
-        scene.add(dirLight);
+        // 2. Направленный свет (солнце, которое дает четкие тени)
+        const dirLight = new THREE.DirectionalLight(0xffe082, 1.0);
+        dirLight.position.set(8, 20, 15);
+        dirLight.castShadow = true; // Этот источник отбрасывает тени
 
-        // 3. Создание арены (земля)
-        const groundGeo = new THREE.PlaneGeometry(28, 18);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+        // Настройка качества теней (чем больше число, тем лучше, но медленнее)
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        // Зона покрытия теней
+        const d = 20;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        dirLight.shadow.camera.far = 50;
+        // Убираем артефакты теней (смещение тени)
+        dirLight.shadow.bias = -0.0001;
+        scene.add(dirLight);
+        
+        // Добавляем помощник для отладки (если нужно проверить зону теней)
+        // const helper = new THREE.CameraHelper( dirLight.shadow.camera );
+        // scene.add( helper );
+
+        // --- Арена (земля) ---
+        const groundGeo = new THREE.PlaneGeometry(40, 40);
+        // Используем MeshStandardMaterial, который понимает тени
+        const groundMat = new THREE.MeshStandardMaterial({ 
+            color: 0x388e3c, // Насыщенный зеленый
+            roughness: 0.9,   // Матовая поверхность
+            metalness: 0.0 
+        });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.1;
+        ground.receiveShadow = true; // Земля ПОЛУЧАЕТ тени от игроков и стен
         scene.add(ground);
 
-        // 4. Добавление 3D-стен (препятствий)
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x795548 });
-        function addWall(x, z, w, d) {
-            const wallGeo = new THREE.BoxGeometry(w, 1.5, d);
+        // --- Стены ---
+        const wallMat = new THREE.MeshStandardMaterial({ 
+            color: 0x795548, // Коричневый
+            roughness: 1.0,
+            metalness: 0.0
+        });
+
+        function addWall(x, z, w, d, h = 1.8) {
+            const wallGeo = new THREE.BoxGeometry(w, h, d);
             const wall = new THREE.Mesh(wallGeo, wallMat);
-            wall.position.set(x, 0.75, z);
+            wall.position.set(x, h/2, z);
+            wall.castShadow = true;    // Стена отбрасывает тень
+            wall.receiveShadow = true; // Стена получает тень от других стен
             scene.add(wall);
         }
 
-        addWall(-4, 2, 3, 1);
-        addWall(4, 2, 3, 1);
-        addWall(0, -1, 2, 2);
-        addWall(-4, -4, 3, 1);
-        addWall(4, -4, 3, 1);
+        addWall(-6, 3, 4, 1.5);
+        addWall(6, 3, 4, 1.5);
+        addWall(-6, -4, 4, 1.5);
+        addWall(6, -4, 4, 1.5);
+        addWall(0, -1, 2.5, 2.5);
+        // Добавляем пару мелких укрытий
+        addWall(-3, -1, 1, 3);
+        addWall(3, -1, 1, 3);
 
-        // 5. Создание 3D-модели бойца (тело, голова, оружие)
+        // --- Персонаж ---
         const playerGroup = new THREE.Group();
 
-        // Тело
-        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 16);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4 });
+        // Тело (цилиндр)
+        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.1, 20);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.6 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 0.5;
-        playerGroup.add(body);
-
-        // Голова
-        const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 1.3;
-        playerGroup.add(head);
-
-        // Оружие (пушка в руках)
-        const gunGeo = new THREE.BoxGeometry(0.7, 0.25, 0.25);
-        const gunMat = new THREE.MeshStandardMaterial({ color: 0xff5722 });
-        const gun = new THREE.Mesh(gunGeo, gunMat);
-        gun.position.set(0.5, 1.0, 0);
-        playerGroup.add(gun);
-
-        playerGroup.position.set(0, 0, 4);
-        scene.add(playerGroup);
-
-        // 6. Снаряды (стрельба)
-        const bullets = [];
-        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-
-        function shoot() {
-            const bulletGeo = new THREE.SphereGeometry(0.18, 8, 8);
-            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
-            bullet.position.copy(playerGroup.position);
-            bullet.position.y = 1.0;
-
-            // Направление полета пули в соответствии с поворотом бойца
-            const dir = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
-            bullet.userData = { velocity: dir.multiplyScalar(0.4) };
-
-            scene.add(bullet);
-            bullets.push(bullet);
-        }
-
-        // 7. Управление виртуальным джойстиком
-        let moveX = 0, moveY = 0;
-        let isDragging = false;
-        const zone = document.getElementById('joystickZone');
-        const knob = document.getElementById('joystickKnob');
-        let startX = 0, startY = 0;
-
-        zone.addEventListener('pointerdown', (e) => {
-            isDragging = true;
-            startX = e.clientX;
-            startY = e.clientY;
-        });
-
-        window.addEventListener('pointermove', (e) => {
-            if (!isDragging) return;
-            let dx = e.clientX - startX;
-            let dy = e.clientY - startY;
-            let dist = Math.sqrt(dx * dx + dy * dy);
-            let maxDist = 40;
-
-            if (dist > maxDist) {
-                dx = (dx / dist) * maxDist;
-                dy = (dy / dist) * maxDist;
-            }
-
-            knob.style.transform = `translate(${dx}px, ${dy}px)`;
-            moveX = dx / maxDist;
-            moveY = dy / maxDist;
-        });
-
-        window.addEventListener('pointerup', () => {
-            isDragging = false;
-            moveX = 0;
-            moveY = 0;
-            knob.style.transform = `translate(0px, 0px)`;
-        });
-
-        // Кнопка атаки
-        document.getElementById('attackBtn').addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            shoot();
-        });
-
-        // Автоматический поворот под размер экрана
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-
-        // 8. Главный игровой цикл
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Перемещение бойца
-            if (moveX !== 0 || moveY !== 0) {
-                const speed = 0.08;
-                let nextX = playerGroup.position.x + moveX * speed;
-                let nextZ = playerGroup.position.z + moveY * speed;
-
-                // Границы арены
-                if (nextX > -13 && nextX < 13) playerGroup.position.x = nextX;
-                if (nextZ > -8 && nextZ < 8) playerGroup.position.z = nextZ;
-
-                // Поворот бойца лицом в сторону движения
-                playerGroup.rotation.y = Math.atan2(-moveY, moveX);
-            }
-
-            // Движение снарядов
-            for (let i = bullets.length - 1; i >= 0; i--) {
-                let b = bullets[i];
-                b.position.add(b.userData.velocity);
-
-                // Удаляем пулю, если она улетела за пределы арены
-                if (Math.abs(b.position.x) > 15 || Math.abs(b.position.z) > 10) {
-                    scene.remove(b);
-                    bullets.splice(i, 1);
-                }
-            }
-
-            renderer.render(scene, camera);
-        }
-
-        animate();
-    </script>
-</body>
-</html>
-
-
-        
+        body.position.y = 0.55;
+        body.cast
