@@ -12,7 +12,6 @@
             background: #111;
             touch-action: none;
             font-family: Arial, sans-serif;
-            /* Убираем выделение текста и элементов при тапах */
             -webkit-user-select: none; 
             user-select: none;
         }
@@ -28,7 +27,6 @@
             align-items: flex-end;
             padding: 25px;
             box-sizing: border-box;
-            /* Важно для iOS: скрываем полосу прокрутки */
             overscroll-behavior: none;
         }
         .joystick-zone {
@@ -42,7 +40,6 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            /* Добавляем тень джойстику */
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .joystick-knob {
@@ -69,7 +66,6 @@
             text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
             box-shadow: 0 8px 20px rgba(0,0,0,0.4);
             cursor: pointer;
-            /* Эффект нажатия */
             transition: transform 0.1s ease, background 0.1s ease;
         }
         .btn-attack:active {
@@ -93,7 +89,7 @@
 </head>
 <body>
 
-    <div class="top-bar">🏆 ЛУЧШАЯ АРЕНА (HD)</div>
+    <div class="top-bar">🏆 АРЕНА (HD)</div>
 
     <div id="ui">
         <div id="joystickZone" class="joystick-zone">
@@ -103,11 +99,10 @@
     </div>
 
     <script>
-        // --- Инициализация с поддержкой теней ---
+        // Инициализация сцены
         const scene = new THREE.Scene();
-        // Более глубокий цвет фона (небо)
         scene.background = new THREE.Color(0x1b5e20); 
-        scene.fog = new THREE.Fog(0x1b5e20, 15, 40); // Легкий туман вдалеке
+        scene.fog = new THREE.Fog(0x1b5e20, 15, 40);
 
         const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 16, 12);
@@ -115,66 +110,46 @@
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // ВКЛЮЧАЕМ ТЕНИ В РЕНДЕРЕРЕ (это очень важно!)
         renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Более мягкие тени
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         document.body.appendChild(renderer.domElement);
 
-        // --- Освещение ---
-        // 1. Рассеянный свет (чтобы объекты не были черными)
+        // Освещение и тени
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.75); 
         scene.add(ambientLight);
 
-        // 2. Направленный свет (солнце, которое дает четкие тени)
         const dirLight = new THREE.DirectionalLight(0xffe082, 1.0);
         dirLight.position.set(8, 20, 15);
-        dirLight.castShadow = true; // Этот источник отбрасывает тени
-
-        // Настройка качества теней (чем больше число, тем лучше, но медленнее)
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        // Зона покрытия теней
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
         const d = 20;
         dirLight.shadow.camera.left = -d;
         dirLight.shadow.camera.right = d;
         dirLight.shadow.camera.top = d;
         dirLight.shadow.camera.bottom = -d;
         dirLight.shadow.camera.far = 50;
-        // Убираем артефакты теней (смещение тени)
         dirLight.shadow.bias = -0.0001;
         scene.add(dirLight);
-        
-        // Добавляем помощник для отладки (если нужно проверить зону теней)
-        // const helper = new THREE.CameraHelper( dirLight.shadow.camera );
-        // scene.add( helper );
 
-        // --- Арена (земля) ---
+        // Земля
         const groundGeo = new THREE.PlaneGeometry(40, 40);
-        // Используем MeshStandardMaterial, который понимает тени
-        const groundMat = new THREE.MeshStandardMaterial({ 
-            color: 0x388e3c, // Насыщенный зеленый
-            roughness: 0.9,   // Матовая поверхность
-            metalness: 0.0 
-        });
+        const groundMat = new THREE.MeshStandardMaterial({ color: 0x388e3c, roughness: 0.9 });
         const ground = new THREE.Mesh(groundGeo, groundMat);
         ground.rotation.x = -Math.PI / 2;
         ground.position.y = -0.1;
-        ground.receiveShadow = true; // Земля ПОЛУЧАЕТ тени от игроков и стен
+        ground.receiveShadow = true;
         scene.add(ground);
 
-        // --- Стены ---
-        const wallMat = new THREE.MeshStandardMaterial({ 
-            color: 0x795548, // Коричневый
-            roughness: 1.0,
-            metalness: 0.0
-        });
+        // Стены
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x795548, roughness: 1.0 });
 
         function addWall(x, z, w, d, h = 1.8) {
             const wallGeo = new THREE.BoxGeometry(w, h, d);
             const wall = new THREE.Mesh(wallGeo, wallMat);
             wall.position.set(x, h/2, z);
-            wall.castShadow = true;    // Стена отбрасывает тень
-            wall.receiveShadow = true; // Стена получает тень от других стен
+            wall.castShadow = true;
+            wall.receiveShadow = true;
             scene.add(wall);
         }
 
@@ -183,16 +158,130 @@
         addWall(-6, -4, 4, 1.5);
         addWall(6, -4, 4, 1.5);
         addWall(0, -1, 2.5, 2.5);
-        // Добавляем пару мелких укрытий
         addWall(-3, -1, 1, 3);
         addWall(3, -1, 1, 3);
 
-        // --- Персонаж ---
+        // Персонаж
         const playerGroup = new THREE.Group();
 
-        // Тело (цилиндр)
         const bodyGeo = new THREE.CylinderGeometry(0.5, 0.5, 1.1, 20);
         const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00bcd4, roughness: 0.6 });
         const body = new THREE.Mesh(bodyGeo, bodyMat);
         body.position.y = 0.55;
-        body.cast
+        body.castShadow = true;
+        playerGroup.add(body);
+
+        const headGeo = new THREE.SphereGeometry(0.4, 16, 16);
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffcc80, roughness: 0.5 });
+        const head = new THREE.Mesh(headGeo, headMat);
+        head.position.y = 1.35;
+        head.castShadow = true;
+        playerGroup.add(head);
+
+        const gunGeo = new THREE.BoxGeometry(0.8, 0.25, 0.25);
+        const gunMat = new THREE.MeshStandardMaterial({ color: 0xff5722, roughness: 0.4 });
+        const gun = new THREE.Mesh(gunGeo, gunMat);
+        gun.position.set(0.5, 1.0, 0);
+        gun.castShadow = true;
+        playerGroup.add(gun);
+
+        playerGroup.position.set(0, 0, 4);
+        scene.add(playerGroup);
+
+        // Снаряды
+        const bullets = [];
+        const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+
+        function shoot() {
+            const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
+            const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+            bullet.position.copy(playerGroup.position);
+            bullet.position.y = 1.0;
+
+            const dir = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), playerGroup.rotation.y);
+            bullet.userData = { velocity: dir.multiplyScalar(0.45) };
+
+            scene.add(bullet);
+            bullets.push(bullet);
+        }
+
+        // Джойстик
+        let moveX = 0, moveY = 0;
+        let isDragging = false;
+        const zone = document.getElementById('joystickZone');
+        const knob = document.getElementById('joystickKnob');
+        let startX = 0, startY = 0;
+
+        zone.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+        });
+
+        window.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            let dx = e.clientX - startX;
+            let dy = e.clientY - startY;
+            let dist = Math.sqrt(dx * dx + dy * dy);
+            let maxDist = 40;
+
+            if (dist > maxDist) {
+                dx = (dx / dist) * maxDist;
+                dy = (dy / dist) * maxDist;
+            }
+
+            knob.style.transform = `translate(${dx}px, ${dy}px)`;
+            moveX = dx / maxDist;
+            moveY = dy / maxDist;
+        });
+
+        window.addEventListener('pointerup', () => {
+            isDragging = false;
+            moveX = 0;
+            moveY = 0;
+            knob.style.transform = `translate(0px, 0px)`;
+        });
+
+        document.getElementById('attackBtn').addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            shoot();
+        });
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Игровой цикл
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (moveX !== 0 || moveY !== 0) {
+                const speed = 0.08;
+                let nextX = playerGroup.position.x + moveX * speed;
+                let nextZ = playerGroup.position.z + moveY * speed;
+
+                if (nextX > -12 && nextX < 12) playerGroup.position.x = nextX;
+                if (nextZ > -7 && nextZ < 7) playerGroup.position.z = nextZ;
+
+                playerGroup.rotation.y = Math.atan2(-moveY, moveX);
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+                b.position.add(b.userData.velocity);
+
+                if (Math.abs(b.position.x) > 15 || Math.abs(b.position.z) > 10) {
+                    scene.remove(b);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
