@@ -1,395 +1,126 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Битва Пустыни - Рекорды</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Brawl Prototype</title>
     <style>
         body {
             margin: 0;
-            background: #5e3c25; /* Desert ground color */
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
+            background: #1a1a1a;
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
+            align-items: center;
             height: 100vh;
             overflow: hidden;
-            user-select: none; /* Prevent text selection */
-        }
-
-        #game-container {
-            position: relative;
-            width: 100%;
-            max-width: 800px;
-            height: 600px;
-            background: #d9b382; /* Lighter desert sand */
-            border: 10px solid #4a301c;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
-            overflow: hidden;
-            cursor: crosshair;
-        }
-
-        /* Player (Brawler) */
-        #player {
-            position: absolute;
-            width: 40px;
-            height: 40px;
-            background: #f44336; /* Default brawler red */
-            border-radius: 50%;
-            border: 3px solid #b71c1c;
-            box-shadow: 0 0 10px rgba(0,0,0,0.7);
-            transition: transform 0.1s;
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            touch-action: none;
+            font-family: sans-serif;
             color: white;
-            font-weight: bold;
-            font-size: 20px;
         }
-        #player::after { /* "Gun" */
-            content: '';
-            position: absolute;
-            width: 15px;
-            height: 5px;
-            background: #616161;
-            right: -5px;
-            top: 17px;
-            border-radius: 2px;
+        canvas {
+            background: #2e7d32;
+            border: 4px solid #ffcc00;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
-        #player.hit {
-            transform: scale(1.2);
-            background-color: #ffcdd2;
-        }
-
-        /* Enemy (Robot) */
-        .enemy {
-            position: absolute;
-            width: 30px;
-            height: 30px;
-            background: #2196f3; /* Default enemy blue */
-            border-radius: 50%;
-            border: 3px solid #0d47a1;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
-            z-index: 5;
-            animation: pulse 1s infinite alternate;
-        }
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.1); }
-        }
-
-        /* Bullet */
-        .bullet {
-            position: absolute;
-            width: 8px;
-            height: 8px;
-            background: #ffeb3b; /* Yellow bullet */
-            border-radius: 50%;
-            box-shadow: 0 0 5px #ff9800;
-            z-index: 8;
-        }
-
-        /* UI Elements */
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none; /* Let clicks pass through to game-container */
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #score-board {
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px 20px;
-            border-radius: 10px;
-            margin: 10px;
-            font-size: 24px;
-            font-weight: bold;
-            text-transform: uppercase;
-            display: flex;
-            justify-content: space-between;
-            align-self: flex-start;
-            border: 2px solid #fff;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
-        }
-        .score-item { margin: 0 10px; }
-        .highlight { color: #ffeb3b; }
-
-        /* Start Screen */
-        #start-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 30;
-        }
-        #start-screen h1 { font-size: 48px; margin-bottom: 10px; color: #ff5722; text-shadow: 3px 3px 0 #bf360c; }
-        #start-screen p { font-size: 18px; margin-bottom: 30px; text-align: center; max-width: 500px;}
-        #start-button {
-            padding: 15px 40px;
-            font-size: 24px;
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 5px 0 #1b5e20;
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-        #start-button:hover { background: #66bb6a; }
-        #start-button:active {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #1b5e20;
-        }
-
-        /* Controls Hint (Mobile) */
-        #controls-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(255, 255, 255, 0.2);
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-size: 14px;
-            pointer-events: none;
-            display: none; /* Only show on mobile */
-        }
-        @media (max-width: 800px) {
-            #controls-hint { display: block; }
-            #game-container { border-width: 5px; }
-            #score-board { font-size: 18px; }
-        }
-
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div id="player"></div>
-        <div id="ui-layer">
-            <div id="score-board">
-                <div class="score-item">СЧЕТ: <span id="score" class="highlight">0</span></div>
-                <div class="score-item">РЕКОРД: <span id="record" class="highlight">0</span></div>
-            </div>
-        </div>
-        <div id="start-screen">
-            <h1>ПУСТЫННАЯ БИТВА</h1>
-            <p>Добро пожаловать в мини-игру по мотивам Brawl Stars! Перемещай мышь или палец по экрану, чтобы управлять бойцом. Стреляй кликом или тапом. Уничтожай роботов и набирай очки!</p>
-            <button id="start-button">ИГРАТЬ</button>
-        </div>
-    </div>
-    <div id="controls-hint">Управление: Тап для движения и стрельбы</div>
+    <canvas id="gameCanvas" width="360" height="600"></canvas>
 
     <script>
-        // Game Variables
-        const gameContainer = document.getElementById('game-container');
-        const player = document.getElementById('player');
-        const scoreEl = document.getElementById('score');
-        const recordEl = document.getElementById('record');
-        const startScreen = document.getElementById('start-screen');
-        const startButton = document.getElementById('start-button');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-        let score = 0;
-        let record = localStorage.getItem('brawlRecord') || 0;
-        let isPlaying = false;
-        let gameInterval;
-        let enemyInterval;
-        let playerX = 380;
-        let playerY = 280;
-        let mouseX = playerX;
-        let mouseY = playerY;
+        // Игрок
+        let player = {
+            x: 180,
+            y: 500,
+            radius: 18,
+            color: '#00d2ff',
+            speed: 3.5
+        };
 
-        // --- Setup ---
-        recordEl.innerText = record;
+        let targetX = player.x;
+        let targetY = player.y;
+        let isMoving = false;
 
-        // --- Player Controls ---
-        function updatePlayerPos() {
-            const containerRect = gameContainer.getBoundingClientRect();
-            const playerSize = player.offsetWidth;
+        // Управление пальцем или мышкой
+        canvas.addEventListener('pointerdown', (e) => {
+            updateTarget(e);
+        });
 
-            // Add inertia for smoother movement
-            playerX += (mouseX - playerX) * 0.1;
-            playerY += (mouseY - playerY) * 0.1;
+        canvas.addEventListener('pointermove', (e) => {
+            if (isMoving) {
+                updateTarget(e);
+            }
+        });
 
-            // Clamp position within container
-            playerX = Math.max(playerSize / 2, Math.min(containerRect.width - playerSize / 2, playerX));
-            playerY = Math.max(playerSize / 2, Math.min(containerRect.height - playerSize / 2, playerY));
+        canvas.addEventListener('pointerup', () => {
+            isMoving = false;
+        });
 
-            player.style.left = (playerX - playerSize / 2) + 'px';
-            player.style.top = (playerY - playerSize / 2) + 'px';
+        function updateTarget(e) {
+            const rect = canvas.getBoundingClientRect();
+            targetX = e.clientX - rect.left;
+            targetY = e.clientY - rect.top;
+            isMoving = true;
         }
 
-        // Mouse/Touch events
-        gameContainer.addEventListener('mousemove', (e) => {
-            if (!isPlaying) return;
-            const rect = gameContainer.getBoundingClientRect();
-            mouseX = e.clientX - rect.left;
-            mouseY = e.clientY - rect.top;
-        });
-        // Touch support
-        gameContainer.addEventListener('touchmove', (e) => {
-            if (!isPlaying) return;
-            e.preventDefault(); // Prevent scrolling
-            const rect = gameContainer.getBoundingClientRect();
-            mouseX = e.touches[0].clientX - rect.left;
-            mouseY = e.touches[0].clientY - rect.top;
-        }, { passive: false });
+        // Обновление логики игры
+        function update() {
+            if (isMoving) {
+                let dx = targetX - player.x;
+                let dy = targetY - player.y;
+                let distance = Math.sqrt(dx * dx + dy * dy);
 
-        // --- Shooting ---
-        gameContainer.addEventListener('click', shoot);
-        gameContainer.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            shoot(e);
-        }, { passive: false });
-
-        function shoot(e) {
-            if (!isPlaying) return;
-            const rect = gameContainer.getBoundingClientRect();
-            let targetX, targetY;
-            if(e.type === 'touchstart') {
-                 targetX = e.touches[0].clientX - rect.left;
-                 targetY = e.touches[0].clientY - rect.top;
-            } else {
-                 targetX = e.clientX - rect.left;
-                 targetY = e.clientY - rect.top;
-            }
-
-            const bullet = document.createElement('div');
-            bullet.classList.add('bullet');
-            bullet.style.left = playerX + 'px';
-            bullet.style.top = playerY + 'px';
-            gameContainer.appendChild(bullet);
-
-            const angle = Math.atan2(targetY - playerY, targetX - playerX);
-            const speed = 10;
-            const vx = Math.cos(angle) * speed;
-            const vy = Math.sin(angle) * speed;
-
-            function moveBullet() {
-                const bX = parseFloat(bullet.style.left);
-                const bY = parseFloat(bullet.style.top);
-                bullet.style.left = (bX + vx) + 'px';
-                bullet.style.top = (bY + vy) + 'px';
-
-                // Check Collision
-                const enemies = document.querySelectorAll('.enemy');
-                enemies.forEach(enemy => {
-                    const eRect = enemy.getBoundingClientRect();
-                    const bRect = bullet.getBoundingClientRect();
-                    if (bRect.left < eRect.right &&
-                        bRect.right > eRect.left &&
-                        bRect.top < eRect.bottom &&
-                        bRect.bottom > eRect.top) {
-                        gameContainer.removeChild(enemy);
-                        gameContainer.removeChild(bullet);
-                        addScore();
-                    }
-                });
-
-                // Remove if out of bounds
-                if (bX < 0 || bX > rect.width || bY < 0 || bY > rect.height) {
-                    if(gameContainer.contains(bullet)) gameContainer.removeChild(bullet);
-                } else {
-                   requestAnimationFrame(moveBullet);
+                if (distance > 2) {
+                    player.x += (dx / distance) * player.speed;
+                    player.y += (dy / distance) * player.speed;
                 }
             }
-            requestAnimationFrame(moveBullet);
         }
 
+        // Отрисовка графики
+        function draw() {
+            // Очистка экрана (трава арены)
+            ctx.fillStyle = '#388e3c';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // --- Game Logic ---
-        function addScore() {
-            score += 100;
-            scoreEl.innerText = score;
-            if (score > record) {
-                record = score;
-                recordEl.innerText = record;
-                localStorage.setItem('brawlRecord', record);
-            }
+            // Рисуем элементы арены (стены/препятствия)
+            ctx.fillStyle = '#795548';
+            ctx.fillRect(60, 150, 80, 30);
+            ctx.fillRect(220, 150, 80, 30);
+            ctx.fillRect(140, 350, 80, 30);
+
+            // Рисуем игрока (боец)
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = player.color;
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+            ctx.closePath();
+
+            // Интерфейс (название режима)
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(10, 10, 120, 30);
+            ctx.fillStyle = '#ffcc00';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText('ЗАХВАТ КРИСТАЛЛОВ', 15, 30);
         }
 
-        function spawnEnemy() {
-            if (!isPlaying) return;
-            const enemy = document.createElement('div');
-            enemy.classList.add('enemy');
-            const containerRect = gameContainer.getBoundingClientRect();
-
-            const side = Math.floor(Math.random() * 4); // 0:top, 1:right, 2:bottom, 3:left
-            let ex, ey;
-            if (side === 0) { ex = Math.random() * containerRect.width; ey = -30; }
-            else if (side === 1) { ex = containerRect.width + 30; ey = Math.random() * containerRect.height; }
-            else if (side === 2) { ex = Math.random() * containerRect.width; ey = containerRect.height + 30; }
-            else { ex = -30; ey = Math.random() * containerRect.height; }
-
-            enemy.style.left = ex + 'px';
-            enemy.style.top = ey + 'px';
-            gameContainer.appendChild(enemy);
-
-            // Move towards player
-            function moveEnemy() {
-                 if(!isPlaying || !gameContainer.contains(enemy)) return;
-                 const currentEx = parseFloat(enemy.style.left);
-                 const currentEy = parseFloat(enemy.style.top);
-                 const dx = playerX - currentEx;
-                 const dy = playerY - currentEy;
-                 const dist = Math.sqrt(dx*dx + dy*dy);
-                 const speed = 0.5; // enemy speed
-
-                 if (dist > 10) {
-                    enemy.style.left = (currentEx + (dx/dist) * speed) + 'px';
-                    enemy.style.top = (currentEy + (dy/dist) * speed) + 'px';
-                    requestAnimationFrame(moveEnemy);
-                 } else {
-                    gameOver();
-                 }
-            }
-            requestAnimationFrame(moveEnemy);
+        // Главный игровой цикл
+        function loop() {
+            update();
+            draw();
+            requestAnimationFrame(loop);
         }
 
-        function startGame() {
-            score = 0;
-            scoreEl.innerText = score;
-            startScreen.style.display = 'none';
-            isPlaying = true;
-                    // Запуск спавна врагов каждые 2 секунды
-        setInterval(spawnEnemy, 2000);
-    }
-
-    function gameOver() {
-        isPlaying = false;
-        startScreen.style.display = 'flex';
-        // Удаляем оставшихся врагов
-        document.querySelectorAll('.enemy').forEach(e => e.remove());
-    }
-
-    startButton.addEventListener('click', startGame);
-    startButton.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        startGame();
-    }, { passive: false });
-
-    // Главный игровой цикл для плавного движения
-    function gameLoop() {
-        updatePlayerPos();
-        requestAnimationFrame(gameLoop);
-    }
-    requestAnimationFrame(gameLoop);
-</script>
+        loop();
+    </script>
 </body>
 </html>
-
 
