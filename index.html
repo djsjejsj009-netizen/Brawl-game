@@ -1,118 +1,163 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mini Brawl Prototype</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brawl Style Landscape</title>
     <style>
         body {
             margin: 0;
-            background: #1a1a1a;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            background: #111;
             overflow: hidden;
             touch-action: none;
-            font-family: sans-serif;
-            color: white;
+            font-family: Arial, sans-serif;
         }
         canvas {
-            background: #2e7d32;
-            border: 4px solid #ffcc00;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            display: block;
+            background: #388e3c;
         }
     </style>
 </head>
 <body>
 
-    <canvas id="gameCanvas" width="360" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Игрок
+        // Автоматически растягиваем на весь экран в горизонтальном режиме
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Игрок (боец)
         let player = {
-            x: 180,
-            y: 500,
-            radius: 18,
-            color: '#00d2ff',
-            speed: 3.5
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            radius: 22,
+            color: '#00bcd4',
+            speed: 4,
+            angle: 0
         };
 
         let targetX = player.x;
         let targetY = player.y;
         let isMoving = false;
 
-        // Управление пальцем или мышкой
-        canvas.addEventListener('pointerdown', (e) => {
-            updateTarget(e);
-        });
+        // Элементы карты: Препятствия (стены) и Кусты
+        const walls = [
+            { x: 250, y: 120, w: 120, h: 40 },
+            { x: 600, y: 120, w: 120, h: 40 },
+            { x: 400, y: 250, w: 80, h: 80 },
+            { x: 250, y: 400, w: 120, h: 40 },
+            { x: 600, y: 400, w: 120, h: 40 }
+        ];
 
-        canvas.addEventListener('pointermove', (e) => {
-            if (isMoving) {
-                updateTarget(e);
-            }
-        });
+        const bushes = [
+            { x: 100, y: 100, w: 100, h: 100 },
+            { x: 800, y: 350, w: 100, h: 100 }
+        ];
 
-        canvas.addEventListener('pointerup', () => {
-            isMoving = false;
-        });
+        // Управление касанием экрана
+        window.addEventListener('pointerdown', (e) => { updateTarget(e); });
+        window.addEventListener('pointermove', (e) => { if (isMoving) updateTarget(e); });
+        window.addEventListener('pointerup', () => { isMoving = false; });
 
         function updateTarget(e) {
-            const rect = canvas.getBoundingClientRect();
-            targetX = e.clientX - rect.left;
-            targetY = e.clientY - rect.top;
+            targetX = e.clientX;
+            targetY = e.clientY;
             isMoving = true;
         }
 
-        // Обновление логики игры
+        // Логика игры
         function update() {
             if (isMoving) {
                 let dx = targetX - player.x;
                 let dy = targetY - player.y;
                 let distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance > 2) {
+                if (distance > 3) {
                     player.x += (dx / distance) * player.speed;
                     player.y += (dy / distance) * player.speed;
+                    // Поворачиваем бойца лицом к цели
+                    player.angle = Math.atan2(dy, dx);
                 }
             }
         }
 
         // Отрисовка графики
         function draw() {
-            // Очистка экрана (трава арены)
-            ctx.fillStyle = '#388e3c';
+            // Трава на арене
+            ctx.fillStyle = '#4caf50';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Рисуем элементы арены (стены/препятствия)
-            ctx.fillStyle = '#795548';
-            ctx.fillRect(60, 150, 80, 30);
-            ctx.fillRect(220, 150, 80, 30);
-            ctx.fillRect(140, 350, 80, 30);
+            // Текстура сетки поля
+            ctx.strokeStyle = '#43a047';
+            ctx.lineWidth = 2;
+            for (let x = 0; x < canvas.width; x += 60) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 60) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
 
-            // Рисуем игрока (боец)
+            // Отрисовка кустов
+            bushes.forEach(b => {
+                ctx.fillStyle = '#2e7d32';
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.strokeStyle = '#1b5e20';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+            });
+
+            // Отрисовка стен
+            walls.forEach(w => {
+                ctx.fillStyle = '#8d6e63';
+                ctx.fillRect(w.x, w.y, w.w, w.h);
+                ctx.strokeStyle = '#4e342e';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(w.x, w.y, w.w, w.h);
+            });
+
+            // Отрисовка бойца с оружием
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle);
+
+            // Оружие бойца
+            ctx.fillStyle = '#ff5722';
+            ctx.fillRect(5, -6, 24, 12);
+
+            // Тело бойца
             ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.arc(0, 0, player.radius, 0, Math.PI * 2);
             ctx.fillStyle = player.color;
             ctx.fill();
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 4;
             ctx.strokeStyle = '#ffffff';
             ctx.stroke();
             ctx.closePath();
 
-            // Интерфейс (название режима)
+            ctx.restore();
+
+            // Интерфейс (Счетчик / Название)
             ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-            ctx.fillRect(10, 10, 120, 30);
-            ctx.fillStyle = '#ffcc00';
-            ctx.font = 'bold 14px sans-serif';
-            ctx.fillText('ЗАХВАТ КРИСТАЛЛОВ', 15, 30);
+            ctx.fillRect(20, 20, 180, 45);
+            ctx.fillStyle = '#ffeb3b';
+            ctx.font = 'bold 16px Arial';
+            ctx.fillText('🏆 БОЙЦОВ: 1 / 10', 35, 48);
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(canvas.width - 150, 20, 130, 45);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('⚡ УЛЬТА: ГОТОВА', canvas.width - 138, 48);
         }
 
-        // Главный игровой цикл
+        // Игровой цикл
         function loop() {
             update();
             draw();
@@ -124,3 +169,4 @@
 </body>
 </html>
 
+        
